@@ -1,15 +1,20 @@
 package com.linus.demo.java.quartz;
 
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.JobKey.jobKey;
+import static org.quartz.TriggerBuilder.newTrigger;
+
+import java.util.Calendar;
+import java.util.Date;
+
 import org.quartz.JobDetail;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.impl.StdSchedulerFactory;
 
-import com.linus.demo.java.quartz.jobs.MyJob;
-import static org.quartz.JobBuilder.*;
-import static org.quartz.TriggerBuilder.*;
-import static org.quartz.SimpleScheduleBuilder.*;
+import com.linus.demo.java.quartz.jobs.RevertPriceJob;
+import com.linus.demo.java.quartz.jobs.SetPriceJob;
 
 /**
  * Hello world!
@@ -23,23 +28,43 @@ public class App
     	  // Grab the Scheduler instance from the Factory
     	  Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
     	  
+    	  if (!scheduler.checkExists(jobKey("setprice", "promotion"))) {
     		// define the job and tie it to our MyJob class
-    	  JobDetail job = newJob(MyJob.class)
-    	      .withIdentity("job1", "group1")
-    	      .build();
+        	  JobDetail job = newJob(SetPriceJob.class)
+        	      .withIdentity("setprice", "promotion")
+        	      .storeDurably()
+        	      .build();
+        	  scheduler.addJob(job, true);
+    	  }
     	  
-    	  // Trigger the job to run now, and then repeat every 40 seconds
-    	  Trigger trigger = newTrigger()
-    	      .withIdentity("trigger1", "group1")
-    	      .startNow()
-    	      .withSchedule(simpleSchedule()
-    	              .withIntervalInSeconds(40)
-    	              .repeatForever())
-    	      .build();
+    	  if (!scheduler.checkExists(jobKey("reverprice", "promotion"))) {
+          	  JobDetail job = newJob(RevertPriceJob.class)
+              	      .withIdentity("reverprice", "promotion")
+              	      .storeDurably()
+              	      .build();
+          	  scheduler.addJob(job, true);
+      	  }
+    	  
+    	  Calendar cal = Calendar.getInstance();
+    	  cal.add(Calendar.MINUTE, 1);
+    	  Date beginTime = cal.getTime();
+    	  cal.add(Calendar.MINUTE, 1);
+    	  Date endTime = cal.getTime();
+    	  
+    	  Trigger setTrigger = newTrigger()
+    			    .withIdentity("setprice", "promotionID")
+    			    .startAt(beginTime)
+    			    .forJob("setprice", "promotion")
+    			    .build();
+    	  
+    	  Trigger revertTrigger = newTrigger()
+  			    .withIdentity("reverprice", "promotionID")
+  			    .startAt(endTime)
+  			    .forJob("reverprice", "promotion")
+  			    .build();
 
-    	  // Tell quartz to schedule the job using our trigger
-    	  scheduler.scheduleJob(job, trigger);
-
+    	  scheduler.scheduleJob(setTrigger);
+    	  scheduler.scheduleJob(revertTrigger);
     	  // and start it off
     	  scheduler.start();
     	  
