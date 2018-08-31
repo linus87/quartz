@@ -55,12 +55,14 @@ public class App
     			    .withIdentity("setprice", "promotionID")
     			    .startAt(beginTime)
     			    .forJob("setprice", "promotion")
+    			    .usingJobData("promotionId", "linus123")
     			    .build();
     	  
     	  Trigger revertTrigger = newTrigger()
   			    .withIdentity("reverprice", "promotionID")
   			    .startAt(endTime)
   			    .forJob("reverprice", "promotion")
+  			    .usingJobData("promotionId", "linus123")
   			    .build();
 
     	  scheduler.scheduleJob(setTrigger);
